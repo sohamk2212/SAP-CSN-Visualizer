@@ -146,6 +146,93 @@ st.markdown("""
     #### Perfect for understanding complex database structures - even for beginners!
 """)
 
+# ============ HOW TO GET CSN SECTION ============
+with st.expander("📖 **How to Get CSN Data from SAP?**", expanded=False):
+    st.markdown("""
+    ### Step-by-Step Guide to Fetch CSN
+    
+    #### **1. URL Construction**
+    To fetch CSN data from your SAP system, use this generic URL pattern:
+    
+    ```
+    https://<YOUR_SAP_SYSTEM_URL>/sap/opu/odata4/sap/csn_exposure_v4/srvd_a2x/sap/csn_exposure/0001/Entities('<ENTITY_NAME>')?$expand=_Source
+    ```
+    
+    **Replace the following:**
+    - `<YOUR_SAP_SYSTEM_URL>` → Your SAP Cloud or On-Premise system URL
+      - Example: `my407343-api.s4hana.cloud.sap`
+      - Or: `sap-prod.yourcompany.com:8000`
+    - `<ENTITY_NAME>` → The entity you want to explore
+      - Example: `I_Product`, `I_Customer`, `I_SalesOrder`, etc.
+    
+    #### **2. How to Get It**
+    
+    **Option A: Using Browser/Postman**
+    - Open your browser or Postman
+    - Navigate to the constructed URL
+    - Authenticate with your SAP credentials
+    - The response will be a JSON object - copy the entire response
+    
+    **Option B: Using SAP OData Test Client**
+    - Go to: `/ui/tools/osdata/` on your SAP system
+    - Navigate to: `csn_exposure_v4` service
+    - Select an entity and fetch the data
+    
+    **Option C: Using cURL (Command Line)**
+    ```bash
+    curl -X GET "https://<YOUR_SYSTEM>/sap/opu/odata4/sap/csn_exposure_v4/srvd_a2x/sap/csn_exposure/0001/Entities('I_Product')?\\$expand=_Source" \\
+         -u username:password \\
+         -H "Accept: application/json"
+    ```
+    
+    #### **3. What CSN Response Looks Like**
+    
+    Here's a sample structure (simplified):
+    """)
+    
+    # Show sample CSN response
+    sample_csn = {
+        "@odata.context": "$metadata#Entities/$entity",
+        "@odata.metadataEtag": "W/\"20260801T042100Z\"",
+        "EntityName": "I_Product",
+        "EntityLabel": "Product",
+        "ReleaseContract": "C1",
+        "ReleaseState": "RELEASED",
+        "ModelingPattern": "",
+        "LastModifiedAt": "2026-08-01T04:21:00Z",
+        "_Source": {
+            "ObjectName": "I_Product",
+            "Kind": "entity",
+            "SourceString": "[Contains full type definitions and column metadata - shown as collapsed in this view]"
+        }
+    }
+    
+    st.json(sample_csn)
+    
+    st.markdown("""
+    #### **4. What to Do With the Response**
+    
+    1. **Copy the entire JSON response** from your browser/Postman
+    2. **Save it to a file** (name it anything, e.g., `I_Product.json` or `I_Product.txt`)
+    3. **Upload here** ↙️ in the sidebar under "📂 File Upload"
+    4. **Visualizer will parse it** automatically and show you:
+       - All columns/elements with their data types
+       - SAP ABAP types (CHAR, DATS, TIMS, QUAN, DECIMAL, etc.)
+       - Field sizes, precision, and scale
+       - Key fields, nullable fields, and associations
+       - Data type distribution charts
+       - Relationship mappings between entities
+    
+    #### **⚠️ Common Issues**
+    
+    | Issue | Solution |
+    |-------|----------|
+    | Authentication failed | Ensure you're using correct credentials for your SAP system |
+    | Empty response | The entity name might be incorrect - check exact spelling (case-sensitive) |
+    | Invalid JSON | Make sure you copied the entire response, not just part of it |
+    | "No columns found" | Some entities may not expose element information - try a different entity |
+    """)
+
 # Sidebar
 st.sidebar.title("📂 File Upload")
 st.sidebar.markdown("---")
@@ -757,23 +844,78 @@ else:
     This tool helps you **understand complex SAP Core Schema Notation (CSN)** files by breaking them down into:
 
     ✅ **Key Columns** - Unique identifiers  
-    ✅ **Data Types** - Column format information  
-    ✅ **Relationships** - Links to other tables  
-    ✅ **Constraints** - Rules and restrictions  
+    ✅ **Data Types** - Column format information (CDS + SAP ABAP types)  
+    ✅ **Relationships** - JOIN conditions and associations between entities  
+    ✅ **Field Metadata** - Sizes, precision, scale, domains  
     ✅ **Descriptions** - What each column means  
+    """)
+    
+    # Features overview in columns
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        ### 📊 **Data Analysis**
+        - Type distribution charts
+        - Statistics & metrics
+        - Column grouping by type
+        - Size & precision analysis
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 🔍 **Search & Filter**
+        - Quick text search
+        - Filter by data type
+        - View key columns
+        - Find associations
+        """)
+    
+    with col3:
+        st.markdown("""
+        ### 📤 **Export Reports**
+        - Excel (7 sheets)
+        - HTML (formatted)
+        - CSV (for analysis)
+        - Print-ready layouts
+        """)
+    
+    st.markdown("---")
+    
+    st.markdown("""
+    ### 🎯 Quick Start:
 
-    ### 📝 How to Use:
-
-    1. **Upload** your CSN JSON file (from SAP)
-    2. **View** comprehensive statistics and summaries
-    3. **Filter** and search columns
-    4. **Export** reports as Excel, HTML, or CSV
+    **Step 1: Get Your CSN**
+    - Expand the "📖 How to Get CSN Data from SAP?" section above
+    - Follow the URL pattern and fetch from your SAP system
+    - Copy the entire JSON response
+    
+    **Step 2: Upload File**
+    - Save the response to a `.json` or `.txt` file
+    - Click "Browse files" in the sidebar ⬅️
+    - Select your file
+    
+    **Step 3: Explore**
+    - View statistics and data type distribution
+    - Click on data type buttons to filter
+    - Switch between Table, Key & Associations, and Detailed Info tabs
+    - Search for specific columns
+    
+    **Step 4: Export**
+    - Generate Excel report with 7 detailed sheets
+    - Export as HTML for sharing
+    - Download CSV for further analysis
 
     ### 💡 Perfect For:
-    - 👨‍💼 Business Analysts
-    - 👨‍💻 Developers
-    - 📊 Data Analysts
-    - 🎓 Beginners learning database schemas
+    - 👨‍💼 Business Analysts (understanding entity relationships)
+    - 👨‍💻 Developers (API integration & field mapping)
+    - 📊 Data Analysts (data type analysis & distribution)
+    - 🎓 Beginners (learning SAP database schemas)
+    - 🏢 Enterprise teams (documentation & onboarding)
+
+    ### 📚 Need Help?
+    - **Don't know how to get CSN?** → Expand "📖 How to Get CSN Data from SAP?" above
+    - **Sample data available** → Check "Use sample data for demo" in sidebar
+    - **Questions?** → Read the docs or check FAQ
 
     ---
     """)
