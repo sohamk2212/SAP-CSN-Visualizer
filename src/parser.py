@@ -97,11 +97,16 @@ class CSNParser:
         self.localization_data = {}
         
         try:
-            # Check if _LocalizationData exists in response
-            if "_LocalizationData" not in self.raw_data:
-                return
+            # Check if _LocalizationData exists - it can be at two locations:
+            # 1. Inside _Source: raw_data["_Source"]["_LocalizationData"]
+            # 2. At top level: raw_data["_LocalizationData"]
+            localization_array = None
             
-            localization_array = self.raw_data["_LocalizationData"]
+            if "_Source" in self.raw_data and "_LocalizationData" in self.raw_data["_Source"]:
+                localization_array = self.raw_data["_Source"]["_LocalizationData"]
+            elif "_LocalizationData" in self.raw_data:
+                localization_array = self.raw_data["_LocalizationData"]
+            
             if not localization_array:
                 return
             
