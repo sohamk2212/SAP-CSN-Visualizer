@@ -152,8 +152,14 @@ with st.expander("📖 **How to Get CSN Data from SAP?**", expanded=False):
     ### Step-by-Step Guide to Fetch CSN
     
     #### **1. URL Construction**
-    To fetch CSN data from your SAP system, use this generic URL pattern:
+    To fetch CSN data from your SAP system, use this URL pattern:
     
+    **✨ RECOMMENDED (Get Full Descriptions):**
+    ```
+    https://<YOUR_SAP_SYSTEM_URL>/sap/opu/odata4/sap/csn_exposure_v4/srvd_a2x/sap/csn_exposure/0001/Entities('<ENTITY_NAME>')?$expand=_Source($expand=_LocalizationData($filter=Locale eq 'en'))
+    ```
+    
+    **Alternative (Without Descriptions):**
     ```
     https://<YOUR_SAP_SYSTEM_URL>/sap/opu/odata4/sap/csn_exposure_v4/srvd_a2x/sap/csn_exposure/0001/Entities('<ENTITY_NAME>')?$expand=_Source
     ```
@@ -163,13 +169,19 @@ with st.expander("📖 **How to Get CSN Data from SAP?**", expanded=False):
       - Example: `my407343-api.s4hana.cloud.sap`
       - Or: `sap-prod.yourcompany.com:8000`
     - `<ENTITY_NAME>` → The entity you want to explore
-      - Example: `I_Product`, `I_Customer`, `I_SalesOrder`, etc.
+      - Example: `I_Product`, `I_Customer`, `I_SalesOrder`, `I_Country`, etc.
+    
+    **Why use the recommended URL?**
+    - ✅ Get **actual descriptions** (e.g., "Country/Region Key") instead of i18n keys
+    - ✅ Real field labels from SAP
+    - ✅ Better documentation for your analysis
     
     #### **2. How to Get It**
     
-    **Option A: Using Browser/Postman**
+    **Option A: Using Browser/Postman (EASIEST)**
     - Open your browser or Postman
-    - Navigate to the constructed URL
+    - Copy the **recommended URL** above
+    - Replace `<YOUR_SAP_SYSTEM_URL>` and `<ENTITY_NAME>` 
     - Authenticate with your SAP credentials
     - The response will be a JSON object - copy the entire response
     
@@ -177,48 +189,61 @@ with st.expander("📖 **How to Get CSN Data from SAP?**", expanded=False):
     - Go to: `/ui/tools/osdata/` on your SAP system
     - Navigate to: `csn_exposure_v4` service
     - Select an entity and fetch the data
+    - Modify URL to add localization expansion
     
     **Option C: Using cURL (Command Line)**
     ```bash
-    curl -X GET "https://<YOUR_SYSTEM>/sap/opu/odata4/sap/csn_exposure_v4/srvd_a2x/sap/csn_exposure/0001/Entities('I_Product')?\\$expand=_Source" \\
+    curl -X GET "https://<YOUR_SYSTEM>/sap/opu/odata4/sap/csn_exposure_v4/srvd_a2x/sap/csn_exposure/0001/Entities('I_Product')?\\$expand=_Source(\\$expand=_LocalizationData(\\$filter=Locale%20eq%20'en'))" \\
          -u username:password \\
-         -H "Accept: application/json"
+         -H "Accept: application/json" \\
+         -o I_Product.json
     ```
     
     #### **3. What CSN Response Looks Like**
     
-    Here's a sample structure (simplified):
+    Here's a sample structure (with localization data):
     """)
     
     # Show sample CSN response
     sample_csn = {
-        "@odata.context": "$metadata#Entities/$entity",
-        "@odata.metadataEtag": "W/\"20260801T042100Z\"",
-        "EntityName": "I_Product",
-        "EntityLabel": "Product",
+        "@odata.context": "$metadata#Entities/_Source/_LocalizationData/$entity",
+        "@odata.metadataEtag": "W/\"20260914062129\"",
+        "EntityName": "I_Country",
+        "EntityLabel": "Country/Region",
         "ReleaseContract": "C1",
         "ReleaseState": "RELEASED",
-        "ModelingPattern": "",
-        "LastModifiedAt": "2026-08-01T04:21:00Z",
         "_Source": {
-            "ObjectName": "I_Product",
+            "ObjectName": "I_Country",
             "Kind": "entity",
-            "SourceString": "[Contains full type definitions and column metadata - shown as collapsed in this view]"
-        }
+            "SourceString": "{... type definitions and column metadata ...}"
+        },
+        "_LocalizationData": [
+            {
+                "ObjectName": "I_Country",
+                "Kind": "entity",
+                "Locale": "en",
+                "I18nString": "{\"i18n\":{\"en\":{\"I_COUNTRY.COUNTRY@ENDUSERTEXT.LABEL\":\"Country/Region Key\",\"I_COUNTRY.COUNTRY@ENDUSERTEXT.QUICKINFO\":\"Country/Region Key\",\"I_COUNTRY.COUNTRYISOCODE@ENDUSERTEXT.LABEL\":\"ISO Code\",\"I_COUNTRY.COUNTRYISOCODE@ENDUSERTEXT.QUICKINFO\":\"ISO Code of the Country/Region\"}}}"
+            }
+        ]
     }
     
     st.json(sample_csn)
     
     st.markdown("""
+    **Note:** When you use the recommended URL with `$expand=_LocalizationData`, the response includes:
+    - `_Source` → Contains entity definition and column metadata
+    - `_LocalizationData` → Contains actual descriptions in i18n format (much better!)
+    
     #### **4. What to Do With the Response**
     
     1. **Copy the entire JSON response** from your browser/Postman
     2. **Save it to a file** (name it anything, e.g., `I_Product.json` or `I_Product.txt`)
     3. **Upload here** ↙️ in the sidebar under "📂 File Upload"
     4. **Visualizer will parse it** automatically and show you:
-       - All columns/elements with their data types
-       - SAP ABAP types (CHAR, DATS, TIMS, QUAN, DECIMAL, etc.)
-       - Field sizes, precision, and scale
+       - **All columns/elements** with their data types
+       - **Actual descriptions** extracted from localization data (if available)
+       - **SAP ABAP types** (CHAR, DATS, TIMS, QUAN, DECIMAL, etc.)
+       - **Field sizes, precision, and scale** for each column
        - Key fields, nullable fields, and associations
        - Data type distribution charts
        - Relationship mappings between entities
@@ -227,10 +252,12 @@ with st.expander("📖 **How to Get CSN Data from SAP?**", expanded=False):
     
     | Issue | Solution |
     |-------|----------|
+    | Only i18n keys in descriptions | Use the **recommended URL** with `$expand=_LocalizationData` to get actual descriptions |
     | Authentication failed | Ensure you're using correct credentials for your SAP system |
     | Empty response | The entity name might be incorrect - check exact spelling (case-sensitive) |
     | Invalid JSON | Make sure you copied the entire response, not just part of it |
     | "No columns found" | Some entities may not expose element information - try a different entity |
+    | No _LocalizationData in response | Use recommended URL or upgrade to newer SAP API version |
     """)
 
 # Sidebar
@@ -241,7 +268,7 @@ st.sidebar.markdown("---")
 uploaded_file = st.sidebar.file_uploader(
     "Upload your CSN JSON file",
     type=["json", "txt"],
-    help="Paste your full CSN response from SAP in a .json or .txt file"
+    help="Paste your full CSN response from SAP (recommended: use URL with $expand=_LocalizationData)"
 )
 
 # Sample data option
