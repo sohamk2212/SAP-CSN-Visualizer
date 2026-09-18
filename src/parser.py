@@ -38,6 +38,7 @@ class CSNParser:
         self.raw_data = {}
         self.parsed_entities = {}
         self.type_definitions = {}  # Cache for type definitions
+        self.localization_data = {}  # Cache for localization/i18n data
 
     def load_file(self) -> bool:
         """Load CSN JSON file (handles both .json and .txt formats)"""
@@ -86,6 +87,57 @@ class CSNParser:
         for name, defn in definitions.items():
             if defn.get("kind") == "type":
                 self.type_definitions[name] = defn
+
+    def _build_localization_map(self, entity_name: str) -> None:
+        """Build localization map from _LocalizationData
+        
+        Extracts actual labels and descriptions from i18n data
+        Maps: {field_name: {"label": "...", "description": "..."}}
+        """
+        self.localization_data = {}
+        
+        try:
+            # Check if _LocalizationData exists in response
+            if "_LocalizationData" not in self.raw_data:
+                return
+            
+            localization_array = self.raw_data["_LocalizationData"]
+            if not localization_array:
+                return
+            
+            # Get the first localization entry (usually English)
+            for loc_entry in localization_array:
+                if loc_entry.get("Kind") == "entity" and loc_entry.get("Locale") == "en":
+                    i18n_string = loc_entry.get("I18nString", "{}")
+                    
+                    # Parse the I18n JSON string
+                    i18n_data = json.loads(i18n_string)
+                    i18n_dict = i18n_data.get("i18n", {}).get("en", {})
+                    
+                    # Build mapping: extract field descriptions
+                    # Pattern: "I_<ENTITY>.<FIELD>@ENDUSERTEXT.LABEL"
+                    for i18n_key, i18n_value in i18n_dict.items():
+                        # Extract field name from i18n key
+                        # Format: "ENTITY.FIELDNAME@ENDUSERTEXT.LABEL" or "ENTITY.FIELDNAME@ENDUSERTEXT.QUICKINFO"
+                        if "@ENDUSERTEXT.LABEL" in i18n_key or "@ENDUSERTEXT.QUICKINFO" in i18n_key:
+                            parts = i18n_key.split(".")
+                            if len(parts) >= 2:
+                                # Get field name (second part, before @)
+                                field_part = parts[1].split("@")[0]
+                                
+                                if field_part not in self.localization_data:
+                                    self.localization_data[field_part] = {}
+                                
+                                # Determine if this is LABEL or QUICKINFO
+                                if "@ENDUSERTEXT.LABEL" in i18n_key:
+                                    self.localization_data[field_part]["label"] = i18n_value
+                                elif "@ENDUSERTEXT.QUICKINFO" in i18n_key:
+                                    self.localization_data[field_part]["description"] = i18n_value
+                    
+                    break
+        except Exception as e:
+            print(f"Error building localization map: {e}")
+            self.localization_data = {}
 
     def _extract_sap_type_info(self, type_name: str) -> Dict[str, str]:
         """Extract SAP ABAP type info from type definition
@@ -151,6 +203,21 @@ class CSNParser:
         
         return result
 
+    def _get_localized_description(self, field_name: str) -> str:
+        """Get localized description for a field from i18n data
+        
+        Prefers QUICKINFO (tooltip) over LABEL (field name)
+        """
+        # Convert to uppercase to match localization keys (they're stored in UPPERCASE)
+        field_key = field_name.upper()
+        
+        if field_key not in self.localization_data:
+            return ""
+        
+        loc_data = self.localization_data[field_key]
+        # Prefer description (QUICKINFO) over label
+        return loc_data.get("description") or loc_data.get("label") or ""
+
     def parse_columns(self, entity_name: str, elements: Dict) -> List[ColumnMetadata]:
         """Parse columns/elements from entity definition"""
         columns = []
@@ -159,12 +226,17 @@ class CSNParser:
             col = ColumnMetadata(name=col_name)
 
             # Extract description/label
-            col.description = (
-                col_meta.get("@EndUserText.label") or
-                col_meta.get("@title") or
-                col_meta.get("@UI.label") or
-                ""
-            )
+            # First try localization data (actual descriptions from i18n)
+            col.description = self._get_localized_description(col_name)
+            
+            # Fall back to inline metadata if localization not available
+            if not col.description:
+                col.description = (
+                    col_meta.get("@EndUserText.label") or
+                    col_meta.get("@title") or
+                    col_meta.get("@UI.label") or
+                    ""
+                )
 
             # Extract datatype
             datatype = col_meta.get("type", "unknown")
@@ -274,6 +346,9 @@ class CSNParser:
         
         # Build type definitions map for quick lookup
         self._build_type_definitions_map(definitions)
+        
+        # Build localization map for actual descriptions from i18n data
+        self._build_localization_map(entity_name)
         
         # Get the main entity definition
         entity_def = None
